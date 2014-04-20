@@ -55,7 +55,7 @@ cpuConstraints vmls = bAnd $ elems $ M.mapWithKey criteria (serverCPUHeights vml
    criteria sid height = (literal $ cpus $ fromJust $ M.lookup sid servers) .> height
 
 indexConstraint :: Map VMID SSID -> SBool
-indexConstraint = bAll (.< 3) . elems
+indexConstraint = bAll (flip inRange (0, 2)) . elems
 
 --gives the CPU consummed by VMs for each server
 serverCPUHeights :: Map VMID SSID -> Map SID SInteger 
