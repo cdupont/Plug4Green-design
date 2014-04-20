@@ -54,30 +54,31 @@ cpuConstraints vmls = bAnd $ elems $ M.mapWithKey criteria (serverCPUHeights vml
    criteria :: SID -> SInteger -> SBool
    criteria sid height = (literal $ cpus $ fromJust $ M.lookup sid servers) .> height
 
+indexConstraint :: Map VMID SSID -> SBool
+indexConstraint = bAll (.< 3) . elems
+
 --gives the CPU consummed by VMs for each server
 serverCPUHeights :: Map VMID SSID -> Map SID SInteger 
 serverCPUHeights vmls = M.mapWithKey sumVMsHeights servers where
    sumVMsHeights :: SID -> Server -> SInteger
    sumVMsHeights sid _ = sum [ite (sid' .== literal sid) (literal $ cpuDemand $ fromJust $ M.lookup vmid vms) 0 | (vmid, sid') <- M.assocs vmls]
 
+
 --special version of minimize that works with our types
 myMinimize :: [VMID] -> (Map VMID SSID -> SInteger) -> (Map VMID SSID -> SBool) -> IO (Maybe (Map VMID SID))
 myMinimize vmids utility constraints = do
-   ms <- minimize' Quantified (utility . toVMLoc) (length vmids) (constraints . toVMLoc) 
+   ms <- minimize Quantified (utility . toVMLoc) (length vmids) (constraints . toVMLoc) 
    return $ toVMLoc <$> ms where
       toVMLoc :: [a] -> Map VMID a
       toVMLoc = fromList . zip vmids
 
-minimize' = minimizeWith (defaultSMTCfg {verbose = True})
-
 --solves a VM placement problem
 vmPlacementProblem :: IO (Maybe (Map VMID SID))
-vmPlacementProblem = myMinimize (keys vms) numberServersOn cpuConstraints
+vmPlacementProblem = myMinimize (keys vms) numberServersOn (liftA2 (&&&) cpuConstraints indexConstraint)
 
 main = do
    s <- vmPlacementProblem   
    putStrLn $ show s
-
 
 -- count the true bits
 count :: [SBool] -> SInteger
