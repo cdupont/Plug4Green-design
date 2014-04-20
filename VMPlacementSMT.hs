@@ -1,5 +1,7 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 
+module Main where
+
 import Data.SBV
 import Data.Map (Map, fromList, elems, keys)
 import qualified Data.Map as M
@@ -10,11 +12,8 @@ import Control.Applicative
 type VMID = Integer
 type SID = Integer
 
---Symbolic annotation. A prefix 'S' indicates that it's a symbolic value
-type S = SBV
-
 --symbolic IDs servers
-type SSID = S SID
+type SSID = SBV SID
 
 --a type synonim for the location of VMs on servers
 type VMLoc a = Map VMID a
@@ -37,11 +36,7 @@ servers = fromList $ zip [0..] [Server "Server1" 100, Server "Server2" 100, Serv
 
 --number of servers ON (which we'll try to minimize)
 numberServersOn :: Map VMID SSID -> SInteger
-numberServersOn = count . elems . serverStates
-
---A server is OFF iff no VM is allocated to it
-serverStates :: Map VMID SSID -> Map SID SBool
-serverStates sc = M.map (./= 0) (vmCounts sc)
+numberServersOn = count . elems . M.map (./= 0) . vmCounts
 
 --compute the number of VMs on each servers
 vmCounts :: Map VMID SSID -> Map SID SInteger
@@ -62,7 +57,6 @@ serverCPUHeights :: Map VMID SSID -> Map SID SInteger
 serverCPUHeights vmls = M.mapWithKey sumVMsHeights servers where
    sumVMsHeights :: SID -> Server -> SInteger
    sumVMsHeights sid _ = sum [ite (sid' .== literal sid) (literal $ cpuDemand $ fromJust $ M.lookup vmid vms) 0 | (vmid, sid') <- M.assocs vmls]
-
 
 --special version of minimize that works with our types
 myMinimize :: [VMID] -> (Map VMID SSID -> SInteger) -> (Map VMID SSID -> SBool) -> IO (Maybe (Map VMID SID))
