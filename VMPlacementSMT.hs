@@ -79,3 +79,9 @@ count :: [SBool] -> SInteger
 count []     = 0
 count (x:xs) = let c' = count xs in ite x (1+c') c'
 
+vmCounts' :: [Integer] -> [SSID] -> [SInteger]
+vmCounts' servers vmls = map count servers where
+   count sid = sum [ite (mysid .== literal sid) 1 0 | mysid <- vmls]
+
+
+cardProve = prove $ \x y -> bAll (.<= 2) $ vmCounts' [1,2,3] [x, y]
